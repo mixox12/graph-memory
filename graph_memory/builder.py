@@ -7,7 +7,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from .client import GraphRagClient, DEFAULT_HTTP_URI, DEFAULT_USER, DEFAULT_PASSWORD
 from .sync import sync_graph_to_neo4j
@@ -165,6 +165,7 @@ def extract_root_scripts(root_dir: Path) -> Tuple[List[Dict[str, Any]], List[Dic
 
 def build_master_graph(
     output_path: Path = DEFAULT_OUTPUT_JSON,
+    project_sources: Optional[List[Dict[str, Any]]] = None,
     sync_to_neo4j: bool = True,
     http_uri: str = DEFAULT_HTTP_URI,
     user: str = DEFAULT_USER,
@@ -174,15 +175,18 @@ def build_master_graph(
     all_nodes: Dict[str, Dict[str, Any]] = {}
     all_edges: List[Dict[str, Any]] = []
 
-    # 1. Project definitions
-    project_sources = [
-        {"name": "relay-prod", "path": ROOT_DIR / "relay-prod" / "graphify-out" / "graph.json"},
-        {"name": "rag-graph", "path": ROOT_DIR / "Desktop" / "rag-graph" / "graphify-out" / "graph.json"},
-        {"name": "clawhub", "path": ROOT_DIR / "clawhub" / "graphify-out" / "graph.json"},
-        {"name": "FilmAgent2_Full_Project", "path": ROOT_DIR / "Desktop" / "FilmAgent2_Full_Project" / "graphify-out" / "graph.json"},
-        {"name": "mr-mac-agent", "path": ROOT_DIR / "Desktop" / "mr mac agent" / "graphify-out" / "graph.json"},
-        {"name": "gemc", "path": ROOT_DIR / "Desktop" / "gemc" / "graphify-out" / "graph.json"},
-    ]
+    # 1. Project definitions: user-specified or discovered from environment
+    if project_sources is None:
+        project_sources = []
+        env_projects = os.getenv("GRAPH_MEMORY_PROJECTS", "")
+        if env_projects:
+            for item in env_projects.split(","):
+                parts = item.strip().split("=")
+                if len(parts) == 2:
+                    project_sources.append({"name": parts[0].strip(), "path": Path(parts[1].strip())})
+                elif len(parts) == 1 and parts[0]:
+                    p = Path(parts[0].strip())
+                    project_sources.append({"name": p.name, "path": p / "graphify-out" / "graph.json"})
 
     root_nodes, root_edges = extract_root_scripts(ROOT_DIR)
     for n in root_nodes:

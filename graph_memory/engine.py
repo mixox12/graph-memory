@@ -14,13 +14,12 @@ from .client import GraphRagClient, DEFAULT_BOLT_URI, DEFAULT_HTTP_URI, DEFAULT_
 
 # Default fallback search for graphify graph.json
 def resolve_default_graph_json() -> Path:
-    env_path = os.getenv("GRAPH_MEMORY_JSON") or os.getenv("RELAY_GRAPH_JSON")
+    env_path = os.getenv("GRAPH_MEMORY_JSON")
     if env_path and Path(env_path).exists():
         return Path(env_path)
     candidates = [
-        Path("/Users/hosamtaha/graphify-out/graph.json"),
-        Path("/Users/hosamtaha/relay-prod/graphify-out/graph.json"),
         Path.cwd() / "graphify-out" / "graph.json",
+        Path.home() / "graphify-out" / "graph.json",
     ]
     for c in candidates:
         if c.exists():
