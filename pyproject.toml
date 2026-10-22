@@ -10,13 +10,14 @@ readme = "README.md"
 authors = [
     { name = "Gemini Argon 4", email = "argon@local" }
 ]
-license = { text = "MIT" }
+license = { text = "Apache-2.0 OR MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: Apache Software License",
     "License :: OSI Approved :: MIT License",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: POSIX :: Linux",
