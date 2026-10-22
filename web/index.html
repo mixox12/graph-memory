@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Graph RAG Studio — Knowledge Graph Memory & Explorer</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Vis.js Network (Bundled 100% locally for air-gapped / offline operation) -->
+  <script src="vis-network.min.js"></script>
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <span class="brand-icon">🕸️</span>
+      <span class="brand-title">Graph RAG Studio</span>
+      <span class="brand-badge">Neo4j + APOC + GDS + GenAI</span>
+    </div>
+
+    <div class="nav-status-pills">
+      <div id="pill-neo4j" class="status-pill online">
+        <span class="dot"></span> Neo4j: <span id="stat-nodes">255k</span> nodes
+      </div>
+      <div id="pill-plugins" class="status-pill online">
+        <span class="dot"></span> Plugins: APOC (174) · GDS (470) · GenAI
+      </div>
+      <div id="pill-graphify" class="status-pill online">
+        <span class="dot"></span> Graphify: <span id="stat-graphify-nodes">3.6k</span> nodes
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <button class="btn btn-secondary" onclick="openModal('cypher-modal')">⚡ Cypher</button>
+      <button class="btn btn-secondary" onclick="openModal('pagerank-modal')">👑 God Nodes</button>
+      <button class="btn btn-secondary" onclick="triggerSync()">🔄 Sync Graphify</button>
+      <button class="btn btn-primary" onclick="resetView()">🎯 Reset View</button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-layout">
+    <!-- Left Sidebar: Controls & Querying -->
+    <aside class="sidebar">
+      <!-- Search & Hybrid Query Panel -->
+      <section class="panel-section">
+        <h3>🔍 Hybrid Graph RAG Query</h3>
+        <p class="section-desc">Search entities and synthesize multi-hop prompt context.</p>
+        <div class="search-box">
+          <input type="text" id="rag-query-input" placeholder="e.g. memory architecture, runtime server..." value="memory architecture" onkeydown="if(event.key==='Enter') executeRagQuery()">
+          <button class="btn btn-primary btn-sm" onclick="executeRagQuery()">Query</button>
+        </div>
+      </section>
+
+      <!-- Shortest Path Finder -->
+      <section class="panel-section">
+        <h3>🛤️ Shortest Path Traversal</h3>
+        <div class="path-inputs">
+          <input type="text" id="path-from" placeholder="From (e.g. server_server)" value="server_server">
+          <input type="text" id="path-to" placeholder="To (e.g. server_runtime)" value="server_runtime">
+          <button class="btn btn-secondary btn-sm" onclick="findShortestPath()">Trace Path</button>
+        </div>
+        <div id="path-result" class="path-display" style="display: none;"></div>
+      </section>
+
+      <!-- Node Inspector Panel -->
+      <section class="panel-section node-inspector">
+        <h3>🔎 Component Inspector</h3>
+        <div id="inspector-content" class="inspector-body">
+          <div class="placeholder-text">Click any node in the graph to inspect properties, community cluster, and in/out connections.</div>
+        </div>
+      </section>
+
+      <!-- LLM Prompt Context Block Output -->
+      <section class="panel-section prompt-section">
+        <div class="section-header">
+          <h3>📋 LLM Context Block</h3>
+          <button class="btn btn-outline btn-xs" onclick="copyPromptContext()">Copy</button>
+        </div>
+        <textarea id="prompt-context-box" readonly placeholder="Run a Graph RAG query above to preview the synthesized LLM prompt block..."></textarea>
+      </section>
+    </aside>
+
+    <!-- Center Canvas: Interactive Network Graph -->
+    <div class="graph-viewport">
+      <div id="network-canvas"></div>
+      
+      <!-- Graph Overlay Controls -->
+      <div class="graph-overlay-controls">
+        <button class="overlay-btn" title="Zoom In" onclick="zoomIn()">➕</button>
+        <button class="overlay-btn" title="Zoom Out" onclick="zoomOut()">➖</button>
+        <button class="overlay-btn" title="Fit All" onclick="network.fit({animation: true})">⛶</button>
+        <button class="overlay-btn" title="Toggle Physics" id="btn-physics" onclick="togglePhysics()">⚡ Physics</button>
+      </div>
+
+      <!-- Graph Legend -->
+      <div class="graph-legend">
+        <div class="legend-title">Communities & Centrality</div>
+        <div class="legend-scale">
+          <span class="legend-chip c0">Community 0 (Core)</span>
+          <span class="legend-chip c1">Community 1 (FastAPI)</span>
+          <span class="legend-chip c2">Community 2 (Teacher)</span>
+          <span class="legend-chip c8">Community 8 (Autonomous)</span>
+          <span class="legend-chip c10">Community 10 (Memory)</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal: Cypher Console -->
+  <div id="cypher-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>⚡ Neo4j Cypher Console</h3>
+        <button class="close-btn" onclick="closeModal('cypher-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="cypher-input" rows="4">CALL apoc.meta.stats() YIELD nodeCount, relCount, labelCount RETURN nodeCount, relCount, labelCount</textarea>
+        <div class="modal-actions">
+          <button class="btn btn-secondary btn-sm" onclick="setCypherExample('apoc')">APOC Stats</button>
+          <button class="btn btn-secondary btn-sm" onclick="setCypherExample('labels')">Show Labels</button>
+          <button class="btn btn-secondary btn-sm" onclick="setCypherExample('pagerank')">GDS PageRank</button>
+          <button class="btn btn-primary btn-sm" onclick="runCypherFromModal()">Execute Cypher</button>
+        </div>
+        <div id="cypher-output" class="console-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: God Nodes & PageRank Leaderboard -->
+  <div id="pagerank-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👑 Architectural God Nodes & Centrality</h3>
+        <button class="close-btn" onclick="closeModal('pagerank-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Nodes ranked by topological degree and PageRank centrality score.</p>
+        <div id="pagerank-list" class="leaderboard-table"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

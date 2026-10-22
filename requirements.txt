@@ -1,0 +1,5 @@
+requests>=2.28.0
+# Optional native driver (Neo4jClient automatically falls back to HTTP transactional API if missing)
+neo4j>=5.10.0; extra == "neo4j-driver"
+pytest>=7.0.0; extra == "dev"
+pytest-cov>=4.0.0; extra == "dev"
